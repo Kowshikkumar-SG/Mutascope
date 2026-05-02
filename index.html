@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MutaScope — DNA Mutation Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #111118;
+    --glass: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.12);
+    --glass-hover: rgba(255,255,255,0.09);
+    --accent-blue: #0A84FF;
+    --accent-purple: #BF5AF2;
+    --accent-green: #32D74B;
+    --accent-red: #FF453A;
+    --accent-orange: #FF9F0A;
+    --accent-teal: #5AC8FA;
+    --accent-pink: #FF375F;
+    --text-primary: rgba(255,255,255,0.95);
+    --text-secondary: rgba(255,255,255,0.6);
+    --text-tertiary: rgba(255,255,255,0.35);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-xl: 28px;
+    --shadow-glass: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    --transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(10,132,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(191,90,242,0.1) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 50% 40%, rgba(50,215,75,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: bgPulse 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes bgPulse {
+    0% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeDown 0.8s ease;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(10,132,255,0.15);
+    border: 1px solid rgba(10,132,255,0.3);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+
+  .header h1 {
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 30%, rgba(10,132,255,0.9) 70%, rgba(191,90,242,0.9) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.8rem;
+  }
+
+  .header p {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    font-weight: 400;
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Glass card */
+  .glass-card {
+    background: var(--glass);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-glass);
+    transition: var(--transition);
+  }
+
+  .glass-card:hover {
+    background: var(--glass-hover);
+    border-color: rgba(255,255,255,0.18);
+    transform: translateY(-1px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-label::before {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+  }
+
+  /* Input section */
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+
+  .dna-input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    outline: none;
+    transition: var(--transition);
+  }
+
+  .dna-input:focus {
+    border-color: var(--accent-blue);
+    background: rgba(10,132,255,0.08);
+    box-shadow: 0 0 0 3px rgba(10,132,255,0.2);
+  }
+
+  .nucleotide-count {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  .analyze-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+  }
+
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .analyze-btn:hover::before { opacity: 1; }
+  .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(10,132,255,0.4); }
+  .analyze-btn:active { transform: translateY(0); }
+
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  /* Result rows */
+  .result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .result-row:last-child { border-bottom: none; }
+
+  .result-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .result-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .result-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* Mutation type badge */
+  .mutation-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* Sequence comparison boxes */
+  .seq-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .seq-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .nuc-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    position: relative;
+    transition: var(--transition);
+  }
+
+  .nuc-box.highlight-orig {
+    background: rgba(10,132,255,0.2);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+    box-shadow: 0 0 12px rgba(10,132,255,0.35);
+  }
+
+  .nuc-box.highlight-mut {
+    background: rgba(255,69,58,0.2);
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+    box-shadow: 0 0 12px rgba(255,69,58,0.35);
+  }
+
+  .nuc-box .pos-label {
+    position: absolute;
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+
+  /* Codon boxes */
+  .codon-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .codon-label-sm {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    width: 110px;
+    flex-shrink: 0;
+  }
+
+  .codon-box {
+    padding: 7px 16px;
+    border-radius: 9px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border: 1px solid;
+  }
+
+  .codon-orig { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.4); color: var(--accent-blue); }
+  .codon-mut { background: rgba(255,69,58,0.15); border-color: rgba(255,69,58,0.4); color: var(--accent-red); }
+  .codon-neutral { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15); color: var(--text-secondary); }
+
+  /* Severity meter */
+  .severity-section { margin-top: 1.5rem; }
+
+  .severity-bar-track {
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 100px;
+    overflow: hidden;
+    margin: 10px 0 6px;
+  }
+
+  .severity-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .severity-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  /* What happened */
+  .explanation-text {
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+
+  .explanation-text .hl-c { color: var(--accent-blue); font-weight: 600; }
+  .explanation-text .hl-t { color: var(--accent-red); font-weight: 600; }
+  .explanation-text .hl-codon-orig { color: var(--accent-blue); font-weight: 600; font-family: monospace; }
+  .explanation-text .hl-codon-mut { color: var(--accent-red); font-weight: 600; font-family: monospace; }
+
+  /* How can it occur */
+  .cause-list { list-style: none; }
+
+  .cause-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+
+  .cause-item:last-child { border-bottom: none; }
+
+  .cause-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  /* Disease section */
+  .disease-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .disease-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 1.4rem;
+    transition: var(--transition);
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .disease-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .disease-card:hover {
+    background: var(--glass-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .disease-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+  }
+
+  .disease-mutation-type {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    display: inline-block;
+  }
+
+  .disease-codon {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .codon-change {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.9rem;
+  }
+
+  .codon-pill {
+    padding: 4px 12px;
+    border-radius: 7px;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .arrow-sm {
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+
+  .disease-desc {
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .disease-gene-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    font-family: monospace;
+    margin-bottom: 8px;
+  }
+
+  /* Summary flow */
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+
+  .flow-card {
+    flex: 1;
+    min-width: 140px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .flow-card .flow-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 0.6rem;
+  }
+
+  .flow-card .flow-content {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .flow-arrow {
+    color: var(--accent-green);
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  /* Amino acid table */
+  .aa-section { margin-bottom: 1.25rem; }
+
+  .codon-table-wrapper {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .codon-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .codon-table th {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-tertiary);
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .codon-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .codon-table tr:hover td {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary);
+  }
+
+  .codon-code {
+    color: var(--accent-blue);
+    font-weight: 700;
+  }
+
+  .stop-codon { color: var(--accent-red) !important; font-weight: 700; }
+  .start-codon { color: var(--accent-green) !important; font-weight: 700; }
+
+  .aa-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* Info bar */
+  .info-bar {
+    background: rgba(10,132,255,0.1);
+    border: 1px solid rgba(10,132,255,0.25);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    font-size: 13px;
+    color: rgba(10,132,255,0.9);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1.5rem;
+  }
+
+  /* Cancer section */
+  .cancer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .cancer-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 1.3rem;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cancer-card::after {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    opacity: 0.06;
+  }
+
+  .cancer-card:hover { transform: translateY(-2px); background: var(--glass-hover); }
+
+  .cancer-type {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .cancer-gene {
+    font-size: 11px;
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--accent-orange);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .cancer-desc {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .mut-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+
+  .section-sub {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+  }
+
+  /* Hidden results */
+  #results-section { display: none; animation: fadeUp 0.6s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .results-grid { grid-template-columns: 1fr; }
+    .input-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:14px; color:var(--text-secondary); letter-spacing:0.5px;">MutaScope is analyzing...</div>
+</div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-badge">🧬 MutaScope</div>
+    <h1>MutaScope</h1>
+    <p>Analyze DNA point mutations, identify codon changes, and understand their biological and clinical impact — from molecular to disease level.</p>
+  </div>
+
+  <!-- Input Section -->
+  <div class="glass-card" style="margin-bottom:1.25rem; animation: fadeUp 0.7s ease 0.1s both;">
+    <div class="card-label">1. Input DNA Sequences</div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>Original DNA Sequence</label>
+        <input type="text" class="dna-input" id="origSeq" value="ATGCGA" placeholder="e.g. ATGCGA" oninput="this.value=this.value.toUpperCase().replace(/[^ATGC]/g,''); updateCount('origSeq','origCount')">
+        <div class="nucleotide-count" id="origCount">6 nucleotides</div>
+      </div>
+      <div class="input-group">
+        <label>Mutated DNA Sequence</label>
+        <input type="text" class="dna-input" id="mutSeq" value="ATGTGA" placeholder="e.g. ATGTGA" oninput="this.value=this.value.toUpperCase().replace(/[^ATGC]/g,''); updateCount('mutSeq','mutCount')">
+        <div class="nucleotide-count" id="mutCount">6 nucleotides</div>
+      </div>
+    </div>
+    <button class="analyze-btn" onclick="analyzeMutation()">
+      🔬 &nbsp;Analyze Mutation
+    </button>
+  </div>
+
+  <!-- Results -->
+  <div id="results-section">
+
+    <!-- Analysis + Sequence + Codon -->
+    <div class="main-grid" style="animation: fadeUp 0.6s ease 0.15s both;">
+      <!-- Left: Analysis Results -->
+      <div class="glass-card">
+        <div class="card-label">Analysis Results</div>
+        <div id="result-rows"></div>
+        <div class="severity-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">Mutation Severity</span>
+            <span style="font-size:12px; font-weight:700;" id="severity-label">—</span>
+          </div>
+          <div class="severity-bar-track">
+            <div class="severity-bar-fill" id="severity-fill" style="width:0%;"></div>
+          </div>
+          <div class="severity-labels">
+            <span>Silent</span><span>Missense</span><span>Nonsense</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Sequence + Codon -->
+      <div style="display:grid; gap:1.25rem;">
+        <div class="glass-card">
+          <div class="card-label">Sequence Comparison</div>
+          <div class="seq-label">Original DNA</div>
+          <div class="seq-row" id="origSeqBoxes" style="margin-bottom:1.2rem;"></div>
+          <div class="seq-label">Mutated DNA</div>
+          <div class="seq-row" id="mutSeqBoxes"></div>
+        </div>
+        <div class="glass-card">
+          <div class="card-label">Codon Comparison</div>
+          <div id="codon-comparison"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- What Happened + How + Bio Impact -->
+    <div class="results-grid" style="margin-bottom:1.25rem; animation: fadeUp 0.6s ease 0.2s both;">
+      <div class="glass-card">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(191,90,242,0.15);">🧬</div>
+          <div><div class="section-title">What Happened?</div><div class="section-sub">Molecular-level event</div></div>
+        </div>
+        <div class="explanation-text" id="what-happened"></div>
+      </div>
+      <div class="glass-card">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(255,159,10,0.15);">⚡</div>
+          <div><div class="section-title">How Can This Occur?</div><div class="section-sub">Mutagenic causes</div></div>
+        </div>
+        <ul class="cause-list">
+          <li class="cause-item"><div class="cause-icon" style="background:rgba(10,132,255,0.15);">🔄</div>DNA replication errors during S-phase</li>
+          <li class="cause-item"><div class="cause-icon" style="background:rgba(255,159,10,0.15);">☢️</div>UV or ionizing radiation (X-rays, gamma)</li>
+          <li class="cause-item"><div class="cause-icon" style="background:rgba(191,90,242,0.15);">🧪</div>Chemical mutagens (alkylating agents, base analogs)</li>
+          <li class="cause-item"><div class="cause-icon" style="background:rgba(255,69,58,0.15);">🏭</div>Environmental toxins and carcinogens</li>
+          <li class="cause-item"><div class="cause-icon" style="background:rgba(50,215,75,0.15);">🎲</div>Spontaneous deamination or tautomeric shift</li>
+        </ul>
+      </div>
+      <div class="glass-card" style="grid-column: 1/-1;">
+        <div class="section-header">
+          <div class="section-icon" style="background:rgba(255,69,58,0.15);">🩺</div>
+          <div><div class="section-title">Biological Impact</div><div class="section-sub">Cellular and protein consequences</div></div>
+        </div>
+        <div id="bio-impact" class="explanation-text"></div>
+      </div>
+    </div>
+
+    <!-- Visual Flow Summary -->
+    <div class="glass-card" style="margin-bottom:1.25rem; animation: fadeUp 0.6s ease 0.25s both;">
+      <div class="card-label">Summary — Visual Flow</div>
+      <div class="flow-row" id="flow-row"></div>
+    </div>
+
+    <!-- Disease Examples -->
+    <div style="animation: fadeUp 0.6s ease 0.3s both; margin-bottom:1.25rem;">
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Associated Diseases &amp; Disorders</div>
+        <div style="font-size:12px; color:var(--text-tertiary);">Genetic conditions linked to this type of mutation, with detailed clinical context</div>
+      </div>
+      <div class="disease-grid" id="disease-grid"></div>
+    </div>
+
+    <!-- Cancer Associations -->
+    <div style="animation: fadeUp 0.6s ease 0.35s both; margin-bottom:1.25rem;">
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Cancer Associations</div>
+        <div style="font-size:12px; color:var(--text-tertiary);">Oncogenic mutations by cancer type and driver gene</div>
+      </div>
+      <div class="cancer-grid" id="cancer-grid"></div>
+    </div>
+
+  </div>
+
+  <!-- Amino Acid + Codon Table (always visible) -->
+  <div class="aa-section" style="animation: fadeUp 0.6s ease 0.4s both;">
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Complete Genetic Code — All 64 Codons</div>
+      <div style="font-size:12px; color:var(--text-tertiary);">Full standard codon table with amino acid properties, single-letter codes, and chemical classification</div>
+    </div>
+    <div class="codon-table-wrapper">
+      <table class="codon-table" id="codon-table"></table>
+    </div>
+  </div>
+
+  <div class="info-bar">
+    <span style="font-size:16px;">ℹ️</span>
+    <span>Not all mutations are harmful. Silent mutations may have no effect; some missense variants confer evolutionary advantage. Context matters — the same codon change in different genes can have vastly different outcomes.</span>
+  </div>
+
+</div>
+
+<script>
+// ─── Genetic Code ─────────────────────────────────────────────────
+const GENETIC_CODE = {
+  "TTT":["Phenylalanine","Phe","F","nonpolar"],
+  "TTC":["Phenylalanine","Phe","F","nonpolar"],
+  "TTA":["Leucine","Leu","L","nonpolar"],
+  "TTG":["Leucine","Leu","L","nonpolar"],
+  "CTT":["Leucine","Leu","L","nonpolar"],
+  "CTC":["Leucine","Leu","L","nonpolar"],
+  "CTA":["Leucine","Leu","L","nonpolar"],
+  "CTG":["Leucine","Leu","L","nonpolar"],
+  "ATT":["Isoleucine","Ile","I","nonpolar"],
+  "ATC":["Isoleucine","Ile","I","nonpolar"],
+  "ATA":["Isoleucine","Ile","I","nonpolar"],
+  "ATG":["Methionine (START)","Met","M","nonpolar_start"],
+  "GTT":["Valine","Val","V","nonpolar"],
+  "GTC":["Valine","Val","V","nonpolar"],
+  "GTA":["Valine","Val","V","nonpolar"],
+  "GTG":["Valine","Val","V","nonpolar"],
+  "TCT":["Serine","Ser","S","polar"],
+  "TCC":["Serine","Ser","S","polar"],
+  "TCA":["Serine","Ser","S","polar"],
+  "TCG":["Serine","Ser","S","polar"],
+  "CCT":["Proline","Pro","P","nonpolar"],
+  "CCC":["Proline","Pro","P","nonpolar"],
+  "CCA":["Proline","Pro","P","nonpolar"],
+  "CCG":["Proline","Pro","P","nonpolar"],
+  "ACT":["Threonine","Thr","T","polar"],
+  "ACC":["Threonine","Thr","T","polar"],
+  "ACA":["Threonine","Thr","T","polar"],
+  "ACG":["Threonine","Thr","T","polar"],
+  "GCT":["Alanine","Ala","A","nonpolar"],
+  "GCC":["Alanine","Ala","A","nonpolar"],
+  "GCA":["Alanine","Ala","A","nonpolar"],
+  "GCG":["Alanine","Ala","A","nonpolar"],
+  "TAT":["Tyrosine","Tyr","Y","polar_aromatic"],
+  "TAC":["Tyrosine","Tyr","Y","polar_aromatic"],
+  "TAA":["STOP (Ochre)","Stop","*","stop"],
+  "TAG":["STOP (Amber)","Stop","*","stop"],
+  "CAT":["Histidine","His","H","basic"],
+  "CAC":["Histidine","His","H","basic"],
+  "CAA":["Glutamine","Gln","Q","polar"],
+  "CAG":["Glutamine","Gln","Q","polar"],
+  "AAT":["Asparagine","Asn","N","polar"],
+  "AAC":["Asparagine","Asn","N","polar"],
+  "AAA":["Lysine","Lys","K","basic"],
+  "AAG":["Lysine","Lys","K","basic"],
+  "GAT":["Aspartic acid","Asp","D","acidic"],
+  "GAC":["Aspartic acid","Asp","D","acidic"],
+  "GAA":["Glutamic acid","Glu","E","acidic"],
+  "GAG":["Glutamic acid","Glu","E","acidic"],
+  "TGT":["Cysteine","Cys","C","polar_sulfur"],
+  "TGC":["Cysteine","Cys","C","polar_sulfur"],
+  "TGA":["STOP (Opal)","Stop","*","stop"],
+  "TGG":["Tryptophan","Trp","W","nonpolar_aromatic"],
+  "CGT":["Arginine","Arg","R","basic"],
+  "CGC":["Arginine","Arg","R","basic"],
+  "CGA":["Arginine","Arg","R","basic"],
+  "CGG":["Arginine","Arg","R","basic"],
+  "AGT":["Serine","Ser","S","polar"],
+  "AGC":["Serine","Ser","S","polar"],
+  "AGA":["Arginine","Arg","R","basic"],
+  "AGG":["Arginine","Arg","R","basic"],
+  "GGT":["Glycine","Gly","G","nonpolar"],
+  "GGC":["Glycine","Gly","G","nonpolar"],
+  "GGA":["Glycine","Gly","G","nonpolar"],
+  "GGG":["Glycine","Gly","G","nonpolar"]
+};
+
+// ─── Disease DB ────────────────────────────────────────────────────
+const DISEASE_DB = {
+  nonsense: [
+    {
+      name: "Duchenne Muscular Dystrophy (DMD)",
+      gene: "DMD",
+      codonChange: "CGA → TGA",
+      aaChange: "Arg → STOP",
+      color: "red",
+      desc: "The DMD gene encodes dystrophin, a 427 kDa structural protein anchoring the cytoskeleton to the extracellular matrix in muscle cells. Nonsense mutations at codons 26, 31, 70, and 162 introduce premature termination codons (PTCs), triggering nonsense-mediated mRNA decay (NMD). This eliminates over 99% of full-length dystrophin, causing progressive muscle fiber necrosis, replacement by fibrotic and adipose tissue, loss of ambulation by age 12, and fatal cardiorespiratory failure typically before age 30. Prevalence: 1 in 3,500 male births."
+    },
+    {
+      name: "Cystic Fibrosis (CF)",
+      gene: "CFTR",
+      codonChange: "TGG → TGA",
+      aaChange: "Trp → STOP (W1282X)",
+      color: "blue",
+      desc: "CFTR encodes a chloride ion channel critical for epithelial fluid regulation. The W1282X nonsense mutation (second most common CF allele) at codon 1282 (TGG→TGA) truncates the protein before its second nucleotide-binding domain, abolishing channel function. The resulting thick, dehydrated mucus obstructs airways causing chronic Pseudomonas infections, pancreatic insufficiency (85% of patients), and male infertility due to congenital absence of the vas deferens. Median life expectancy ~50 years with modern therapy."
+    },
+    {
+      name: "Hemophilia A",
+      gene: "F8",
+      codonChange: "CAA → TAA",
+      aaChange: "Gln → STOP",
+      color: "orange",
+      desc: "Factor VIII (F8) is a coagulation cofactor in the intrinsic pathway. Nonsense mutations throughout the 186 exon gene account for ~5% of severe hemophilia A cases. PTC at codon 1941 (CAA→TAA) or near the A2/A3 domain boundary truncate the protein before the B-domain cleavage site, producing non-functional Factor VIII. Patients suffer spontaneous hemarthrosis, intramuscular hemorrhage, and potentially life-threatening intracranial bleeding. Treatment: recombinant Factor VIII infusion or emicizumab prophylaxis."
+    },
+    {
+      name: "β-Thalassemia",
+      gene: "HBB",
+      codonChange: "CAA → TAA",
+      aaChange: "Gln → STOP (codon 39)",
+      color: "purple",
+      desc: "The HBB gene encodes the β-globin chain of adult hemoglobin (HbA). Nonsense mutation at codon 39 (CAA→TAA, prevalent in Mediterranean populations) is among the most common β-thalassemia alleles globally. The truncated β-globin transcript is degraded by NMD, resulting in β0-thalassemia. Homozygous patients develop transfusion-dependent anemia, iron overload (hemosiderosis), extramedullary hematopoiesis, hepatosplenomegaly, and characteristic facial deformities ('chipmunk facies') from marrow expansion. Curative therapy: allogeneic HSCT or gene therapy."
+    },
+    {
+      name: "Ataxia-Telangiectasia (AT)",
+      gene: "ATM",
+      codonChange: "CGA → TGA",
+      aaChange: "Arg → STOP",
+      color: "teal",
+      desc: "ATM (Ataxia Telangiectasia Mutated) encodes a 3,056 aa serine/threonine kinase that orchestrates the DNA damage response (DDR), phosphorylating H2AX, BRCA1, CHK2, and p53 after double-strand breaks. Biallelic nonsense mutations cause near-complete loss of ATM, impairing G1/S, intra-S, and G2/M checkpoints. Clinically: progressive cerebellar ataxia (onset age 1–2), oculocutaneous telangiectasias, immunodeficiency, and a 100-fold increased risk of lymphomas and leukemias due to unchecked genomic instability."
+    },
+    {
+      name: "Rett Syndrome",
+      gene: "MECP2",
+      codonChange: "TGG → TGA",
+      aaChange: "Trp → STOP (R255X / R270X)",
+      color: "pink",
+      desc: "MECP2 (Methyl CpG Binding Protein 2) on the X chromosome regulates chromatin structure and gene expression by binding methylated CpG dinucleotides. Recurrent nonsense mutations R255X and R270X in the methyl-binding domain prevent binding to methylated DNA, dysregulating hundreds of neuronal genes including BDNF and UBE3A. Almost exclusively affecting females (males with hemizygous mutation die in utero), Rett syndrome presents with apparently normal development until 6–18 months, followed by progressive loss of purposeful hand use, stereotypic hand-wringing, seizures, autonomic dysfunction, and severe intellectual disability."
+    }
+  ],
+  missense: [
+    {
+      name: "Sickle Cell Anemia",
+      gene: "HBB",
+      codonChange: "GAG → GTG",
+      aaChange: "Glu → Val (E6V)",
+      color: "red",
+      desc: "The single missense substitution E6V in β-globin (hydrophilic glutamic acid replaced by hydrophobic valine) creates a hydrophobic surface patch on deoxygenated HbS tetramers. This drives polymerization of HbS into rigid fibers under low-oxygen conditions, distorting erythrocytes into crescent 'sickle' shapes. Consequences: hemolytic anemia (Hb ~6–8 g/dL), vaso-occlusive crises causing acute chest syndrome, stroke, avascular necrosis, and organ damage. Heterozygous carriers (sickle cell trait) have survival advantage against falciparum malaria in endemic regions."
+    },
+    {
+      name: "Phenylketonuria (PKU)",
+      gene: "PAH",
+      codonChange: "CGG → CAG",
+      aaChange: "Arg → Gln (R408W equivalent class)",
+      color: "blue",
+      desc: "Phenylalanine hydroxylase (PAH) converts phenylalanine to tyrosine using tetrahydrobiopterin (BH4) as cofactor. Missense mutations (over 900 known, most commonly R408W in Europeans) reduce PAH activity by 1–99% depending on variant. Loss-of-function leads to phenylalanine accumulation (>1200 µmol/L), competitive inhibition of LNAA transporters at the BBB, and deficient neurotransmitter synthesis (dopamine, serotonin). Untreated: severe intellectual disability, seizures, microcephaly, behavioral disorders. Treated by lifelong phenylalanine-restricted diet or sapropterin (BH4 analog)."
+    },
+    {
+      name: "Marfan Syndrome",
+      gene: "FBN1",
+      codonChange: "TGT → AGT",
+      aaChange: "Cys → Ser",
+      color: "purple",
+      desc: "Fibrillin-1 (FBN1) is a cysteine-rich glycoprotein forming 10–12 nm extracellular microfibrils that anchor elastic fibers and regulate TGF-β bioavailability. Missense mutations disrupting cysteine residues in EGF-like domains (over 3,000 pathogenic variants) prevent proper disulfide bond formation, destabilizing microfibril assembly. Haploinsufficiency leads to enhanced TGF-β signaling in the aortic media, causing cystic medial necrosis, progressive aortic root dilation (risk of type A dissection/rupture), ectopia lentis, and skeletal features (dolichostenomelia, pectus deformity, scoliosis, arachnodactyly)."
+    },
+    {
+      name: "BRCA1/2-Associated Breast Cancer",
+      gene: "BRCA1/2",
+      codonChange: "AGT → AAT",
+      aaChange: "Ser → Asn",
+      color: "pink",
+      desc: "BRCA1 and BRCA2 are tumor suppressor genes essential for homologous recombination (HR) repair of double-strand DNA breaks. Missense mutations in the RING domain (BRCA1) or BRC repeats (BRCA2) impair interactions with RAD51 or BARD1, disabling HR. Cells resort to error-prone NHEJ, accumulating chromosomal rearrangements. Carriers face 65–72% lifetime breast cancer risk, 44–46% ovarian cancer risk. In pancreatic, prostate, and male breast cancers, BRCA2 missense variants at conserved residues confer similar risk. These variants are exploited therapeutically via PARP inhibitor synthetic lethality (olaparib, niraparib)."
+    }
+  ],
+  silent: [
+    {
+      name: "Silent Variants — Clinical Context",
+      gene: "Various",
+      codonChange: "CGA → CGG",
+      aaChange: "Arg → Arg (synonymous)",
+      color: "green",
+      desc: "Synonymous (silent) mutations change the codon without altering the amino acid, exploiting codon degeneracy. Though classified as 'silent', emerging evidence shows functional consequences: altered splicing enhancer/silencer sequences (ESEs/ESSs) can cause exon skipping (SMN1 in spinal muscular atrophy), reduced translation efficiency through codon usage bias (affecting protein folding kinetics), or creation of cryptic regulatory elements. The term 'silent' is increasingly recognized as a misnomer in regulatory genomics."
+    }
+  ]
+};
+
+// ─── Cancer DB ─────────────────────────────────────────────────────
+const CANCER_DB = [
+  { type:"Colorectal Cancer", gene:"KRAS", mut:"Missense (G12D, G12V)", color:"#FF453A", desc:"KRAS codon 12/13 missense mutations lock GTPase in active GTP-bound state, constitutively activating RAS–RAF–MEK–ERK signaling independent of EGFR. Present in ~45% of colorectal cancers; predicts resistance to anti-EGFR therapy (cetuximab, panitumumab). G12D (GGT→GAT) is most frequent." },
+  { type:"Lung Adenocarcinoma", gene:"EGFR", mut:"Missense (L858R, exon 19 del)", color:"#0A84FF", desc:"EGFR L858R (CTG→CGG) in the kinase domain enhances receptor autophosphorylation without ligand binding, driving PI3K/AKT and STAT3 pathways. Occurs in ~15% Caucasian and ~40% Asian NSCLC. Defines sensitivity to TKIs (erlotinib, osimertinib); T790M secondary resistance mutation reduces drug binding affinity." },
+  { type:"Chronic Myeloid Leukemia", gene:"BCR-ABL1", mut:"Translocation → constitutive kinase", color:"#BF5AF2", desc:"t(9;22) Philadelphia chromosome creates BCR-ABL1 fusion with constitutive ABL tyrosine kinase activity, activating JAK-STAT, PI3K, RAS pathways. Point mutation T315I (gatekeeper, ACC→ATC) at BCR-ABL1 confers resistance to imatinib, dasatinib, nilotinib by removing hydrogen bond contact with drug. Ponatinib and asciminib retain activity against T315I." },
+  { type:"Melanoma", gene:"BRAF", mut:"Missense (V600E)", color:"#FF9F0A", desc:"BRAF V600E (GTG→GAG) substitutes valine with glutamic acid in the activation loop, mimicking phosphorylation and activating MAPK kinase signaling ~500-fold above baseline. Present in ~50% of melanomas. Targeted by vemurafenib and dabrafenib; combination with MEK inhibitor (trametinib) significantly reduces acquired resistance. Also found in hairy cell leukemia, papillary thyroid carcinoma, and gliomas." },
+  { type:"Li-Fraumeni Syndrome / Multiple Cancers", gene:"TP53", mut:"Missense (R175H, R248W, R273H)", color:"#32D74B", desc:"TP53 is mutated in ~50% of all human cancers. Missense hotspot mutations at R175H, R248W, R273H, R248Q disrupt sequence-specific DNA binding, preventing transcriptional activation of p21, MDM2, PUMA, and BAX. Mutant p53 proteins frequently gain oncogenic function (GOF) by binding and inactivating p63/p73. Loss of p53 tumor suppression permits unrestricted cell cycle progression, resistance to apoptosis, and genomic instability." },
+  { type:"Breast Cancer (HER2+)", gene:"ERBB2", mut:"Amplification/missense", color:"#FF375F", desc:"ERBB2 (HER2) amplification or activating missense mutations (L755S, V777L in kinase domain) drive PI3K/AKT/mTOR and RAS/MAPK hyperactivation. HER2-amplified tumors (20% of breast cancers) are characterized by aggressive phenotype, high mitotic index, and poor prognosis without targeted therapy. Trastuzumab (anti-HER2 mAb), pertuzumab, and trastuzumab deruxtecan (ADC) have transformed outcomes; survival at 5 years ~>80% with HER2-targeted regimens." },
+  { type:"Pancreatic Ductal Adenocarcinoma", gene:"KRAS + TP53 + SMAD4", mut:"Missense + Nonsense", color:"#5AC8FA", desc:"Pancreatic cancer progression follows a multi-hit model: KRAS mutation (>90%; G12D most common) is the initiating event in PanIN lesions, followed by CDKN2A/p16 inactivation, TP53 missense mutation, and SMAD4/DPC4 deletion. The combination of activated KRAS and lost TP53 creates a highly proliferative, apoptosis-resistant, genomically unstable cell. Median survival <12 months; 5-year survival ~11% partly due to late diagnosis and therapeutic resistance driven by these mutations." },
+  { type:"Glioblastoma (GBM)", gene:"IDH1/2 + EGFR", mut:"Missense (R132H IDH1)", color:"#FF9F0A", desc:"IDH1 R132H (CGT→CAT) is the defining mutation of lower-grade gliomas and secondary GBM (present in ~80% of grade II/III gliomas). Mutant IDH1 gains neomorphic enzyme activity, converting α-ketoglutarate to 2-hydroxyglutarate (2-HG) oncometabolite. 2-HG inhibits TET demethylases and histone demethylases, causing CpG island methylator phenotype (G-CIMP), silencing MGMT and other tumor suppressor genes. IDH-mutant gliomas have better prognosis than IDH-wildtype GBM. Ivosidenib (IDH1 inhibitor) approved for IDH1-mutant cholangiocarcinoma." }
+];
+
+// ─── Utility functions ─────────────────────────────────────────────
+function updateCount(inputId, countId) {
+  const v = document.getElementById(inputId).value;
+  document.getElementById(countId).textContent = `${v.length} nucleotides`;
+}
+
+function dnaToRNA(dna) { return dna.replace(/T/g, 'U'); }
+
+function getAA(codon) {
+  const info = GENETIC_CODE[codon];
+  if (!info) return ['Unknown','?','?','unknown'];
+  return info;
+}
+
+function classifyMutation(origAA, mutAA) {
+  if (origAA[0] === mutAA[0]) return 'silent';
+  if (mutAA[2] === '*') return 'nonsense';
+  return 'missense';
+}
+
+// ─── Main analysis ─────────────────────────────────────────────────
+function analyzeMutation() {
+  const orig = document.getElementById('origSeq').value.trim().toUpperCase();
+  const mut = document.getElementById('mutSeq').value.trim().toUpperCase();
+
+  if (!orig || !mut || orig.length !== mut.length || orig.length < 3) {
+    alert('Please enter valid DNA sequences of equal length (minimum 3 nucleotides).');
+    return;
+  }
+
+  document.getElementById('loadingOverlay').classList.add('active');
+  setTimeout(() => {
+    try { doAnalysis(orig, mut); }
+    catch(e) { console.error(e); }
+    document.getElementById('loadingOverlay').classList.remove('active');
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('results-section').scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 600);
+}
+
+function doAnalysis(orig, mut) {
+  // Find first differing position
+  let mutPos = -1;
+  for (let i = 0; i < orig.length; i++) {
+    if (orig[i] !== mut[i]) { mutPos = i; break; }
+  }
+
+  const origBase = mutPos >= 0 ? orig[mutPos] : '—';
+  const mutBase = mutPos >= 0 ? mut[mutPos] : '—';
+  const codonIndex = mutPos >= 0 ? Math.floor(mutPos / 3) : 0;
+  const start = codonIndex * 3;
+
+  const origCodon = orig.slice(start, start + 3);
+  const mutCodon = mut.slice(start, start + 3);
+  const origAA = getAA(origCodon);
+  const mutAA = getAA(mutCodon);
+  const mutType = mutPos === -1 ? 'no change' : classifyMutation(origAA, mutAA);
+
+  // ── Result rows ──
+  const iconMap = {
+    pos: {bg:'rgba(10,132,255,0.15)', icon:'📍'},
+    origBase: {bg:'rgba(10,132,255,0.15)', icon:'🔵'},
+    mutBase: {bg:'rgba(255,69,58,0.15)', icon:'🔴'},
+    codon: {bg:'rgba(191,90,242,0.15)', icon:'🧬'},
+    aa: {bg:'rgba(50,215,75,0.15)', icon:'🔬'}
+  };
+
+  const mutBadgeStyle = {
+    nonsense: 'background:rgba(255,69,58,0.2); border:1px solid rgba(255,69,58,0.5); color:#FF453A;',
+    missense: 'background:rgba(255,159,10,0.2); border:1px solid rgba(255,159,10,0.5); color:#FF9F0A;',
+    silent:   'background:rgba(50,215,75,0.2); border:1px solid rgba(50,215,75,0.5); color:#32D74B;',
+    'no change': 'background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#aaa;'
+  };
+
+  const rows = [
+    { label:'Mutation Position', icon:iconMap.pos, val: mutPos >= 0 ? `${mutPos+1}${getOrdinal(mutPos+1)} nucleotide` : 'No mutation' },
+    { label:'Original Base', icon:iconMap.origBase, val:`<span style="background:rgba(10,132,255,0.2);border:1px solid rgba(10,132,255,0.5);color:#0A84FF;padding:3px 12px;border-radius:7px;font-weight:700;font-family:monospace;">${origBase}</span>` },
+    { label:'Mutated Base', icon:iconMap.mutBase, val:`<span style="background:rgba(255,69,58,0.2);border:1px solid rgba(255,69,58,0.5);color:#FF453A;padding:3px 12px;border-radius:7px;font-weight:700;font-family:monospace;">${mutBase}</span>` },
+    { label:'Original Codon', icon:iconMap.codon, val:`<span style="color:var(--accent-blue);font-family:monospace;font-weight:700;">${origCodon || '—'}</span>` },
+    { label:'Mutated Codon', icon:iconMap.codon, val:`<span style="color:var(--accent-red);font-family:monospace;font-weight:700;">${mutCodon || '—'}</span>` },
+    { label:'Original Amino Acid', icon:iconMap.aa, val: origAA[0] ? `${origAA[0]} (${origAA[1]}, ${origAA[2]})` : '—' },
+    { label:'Mutated Amino Acid', icon:iconMap.aa, val: mutAA[0] ? `<span style="${mutAA[2]==='*'?'color:var(--accent-red);font-weight:800;':''}">${mutAA[0] === 'STOP (Opal)' || mutAA[0].startsWith('STOP') ? 'STOP ⛔' : mutAA[0]+' ('+mutAA[1]+', '+mutAA[2]+')'}</span>` : '—' }
+  ];
+
+  document.getElementById('result-rows').innerHTML = rows.map(r => `
+    <div class="result-row">
+      <div class="result-label">
+        <div class="result-icon" style="background:${r.icon.bg}">${r.icon.icon}</div>
+        ${r.label}
+      </div>
+      <div class="result-value">${r.val}</div>
+    </div>
+  `).join('') + `
+    <div class="result-row" style="padding-top:12px; border-bottom:none;">
+      <div class="result-label"><div class="result-icon" style="background:rgba(255,69,58,0.15);">⚠️</div>Mutation Type</div>
+      <span class="mutation-badge" style="${mutBadgeStyle[mutType]}">${mutType.toUpperCase()}</span>
+    </div>
+  `;
+
+  // ── Severity ──
+  const sevData = { silent:{pct:20, color:'#32D74B', label:'🟢 Low'}, missense:{pct:55, color:'#FF9F0A', label:'🟡 Medium'}, nonsense:{pct:90, color:'#FF453A', label:'🔴 High'}, 'no change':{pct:5, color:'#888', label:'—'} };
+  const sev = sevData[mutType] || sevData['no change'];
+  document.getElementById('severity-fill').style.width = sev.pct + '%';
+  document.getElementById('severity-fill').style.background = `linear-gradient(90deg, ${sev.color}88, ${sev.color})`;
+  document.getElementById('severity-label').textContent = sev.label;
+  document.getElementById('severity-label').style.color = sev.color;
+
+  // ── Sequence boxes ──
+  function buildSeqBoxes(seq, highlightIdx) {
+    return seq.split('').map((n, i) => {
+      const cls = i === highlightIdx ? (i === mutPos ? 'highlight-orig' : '') : '';
+      const mutCls = i === highlightIdx && highlightIdx === mutPos ? 'highlight-mut' : '';
+      const finalCls = highlightIdx === mutPos && i === mutPos ? (seq === orig ? 'highlight-orig' : 'highlight-mut') : '';
+      return `<div class="nuc-box ${finalCls}">${n}<span class="pos-label">${i+1}</span></div>`;
+    }).join('');
+  }
+
+  document.getElementById('origSeqBoxes').innerHTML = orig.split('').map((n, i) => `
+    <div class="nuc-box ${i===mutPos?'highlight-orig':''}">${n}<span class="pos-label">${i+1}</span></div>
+  `).join('');
+  document.getElementById('mutSeqBoxes').innerHTML = mut.split('').map((n, i) => `
+    <div class="nuc-box ${i===mutPos?'highlight-mut':''}">${n}<span class="pos-label">${i+1}</span></div>
+  `).join('');
+
+  // ── Codon comparison ──
+  const allOrigCodons = orig.match(/.{1,3}/g) || [];
+  const allMutCodons = mut.match(/.{1,3}/g) || [];
+  document.getElementById('codon-comparison').innerHTML = `
+    <div class="codon-row"><span class="codon-label-sm">Original Codons</span>
+      ${allOrigCodons.map((c,i) => `<span class="codon-box ${i===codonIndex?'codon-orig':'codon-neutral'}">${c}</span>`).join('')}
+    </div>
+    <div class="codon-row"><span class="codon-label-sm">Mutated Codons</span>
+      ${allMutCodons.map((c,i) => `<span class="codon-box ${i===codonIndex?'codon-mut':'codon-neutral'}">${c}</span>`).join('')}
+    </div>
+  `;
+
+  // ── What happened ──
+  const whatMap = {
+    nonsense: `A point mutation occurred at the <strong>position ${mutPos+1}</strong> nucleotide, where <span class="hl-c">${origBase}</span> was replaced by <span class="hl-t">${mutBase}</span>.<br><br>
+    This changed the codon from <span class="hl-codon-orig">${origCodon}</span> (encoding <span class="hl-c">${origAA[0]}</span>) to <span class="hl-codon-mut">${mutCodon}</span>, which is a premature <strong>stop codon</strong>.<br><br>
+    As a result, the ribosome terminates translation prematurely at this position, producing a <strong>truncated, non-functional protein</strong>. The incomplete protein is typically degraded via nonsense-mediated mRNA decay (NMD) or proteasomal degradation.`,
+    missense: `A point mutation occurred at <strong>position ${mutPos+1}</strong> where <span class="hl-c">${origBase}</span> was substituted with <span class="hl-t">${mutBase}</span>.<br><br>
+    The codon changes from <span class="hl-codon-orig">${origCodon}</span> (${origAA[0]}) to <span class="hl-codon-mut">${mutCodon}</span> (${mutAA[0]}). The amino acid identity changes — this is a <strong>missense substitution</strong>.<br><br>
+    Depending on the biochemical properties of the new amino acid (charge, size, polarity), this may: (1) disrupt the protein's 3D folding, (2) eliminate active site residues, (3) abolish cofactor/substrate binding, or (4) cause only subtle structural changes with preserved function.`,
+    silent: `A point mutation occurred at <strong>position ${mutPos+1}</strong> where <span class="hl-c">${origBase}</span> was replaced by <span class="hl-t">${mutBase}</span>.<br><br>
+    However, the codon change from <span class="hl-codon-orig">${origCodon}</span> to <span class="hl-codon-mut">${mutCodon}</span> still encodes the same amino acid <strong>${origAA[0]}</strong>, exploiting the <em>degeneracy of the genetic code</em>.<br><br>
+    Classified as a <strong>synonymous/silent mutation</strong> — typically no change in primary protein sequence. However, emerging data show silent variants can affect mRNA stability, splicing regulatory elements, or translational efficiency via codon bias.`,
+    'no change': `<strong>No mutation detected.</strong> The two sequences are identical.`
+  };
+
+  document.getElementById('what-happened').innerHTML = whatMap[mutType] || whatMap['no change'];
+
+  // ── Biological impact ──
+  const bioMap = {
+    nonsense: `<strong>Nonsense mutations generate premature termination codons (PTCs)</strong> that trigger two major degradation pathways:<br><br>
+    <strong>1. Nonsense-Mediated Decay (NMD):</strong> When a PTC is located >50–55 nt upstream of the final exon-exon junction, the mRNA is recognized by the SURF complex (SMG1-UPF1-eRF1-eRF3) and degraded. This prevents accumulation of truncated proteins, but completely eliminates the mRNA transcript — effectively a null mutation.<br><br>
+    <strong>2. Truncated Protein Production:</strong> If NMD is incomplete, a shortened polypeptide is produced. This truncated protein typically lacks essential C-terminal domains and is usually non-functional or exhibits dominant-negative activity by competing with the wild-type protein.<br><br>
+    <strong>Disease consequence:</strong> Nonsense mutations usually produce complete loss of protein function, causing recessive genetic diseases (both alleles must be affected) or dominant conditions via haploinsufficiency.`,
+    missense: `<strong>Missense mutations alter a single amino acid in the polypeptide chain</strong>, with consequences ranging from inconsequential to catastrophic depending on:<br><br>
+    <strong>1. Position:</strong> Substitutions at catalytic residues, disulfide-bond cysteines, or protein interaction interfaces are typically severe. Surface-exposed residues tolerate changes better.<br><br>
+    <strong>2. Physicochemical change:</strong> Conservative substitutions (e.g., Val→Ile, both nonpolar) are often tolerated. Non-conservative changes (e.g., Glu→Val, charged→nonpolar) typically disrupt structure.<br><br>
+    <strong>3. Gain-of-function:</strong> Some missense variants confer new activity (e.g., oncogenic KRAS G12D, mutant p53 GOF alleles) — these can be dominant and more clinically significant than loss-of-function alleles.`,
+    silent: `<strong>Synonymous mutations do not alter the encoded amino acid</strong>, but emerging evidence reveals multiple mechanisms by which they can exert biological effects:<br><br>
+    <strong>1. Splicing disruption:</strong> Exonic splicing enhancers (ESEs) recognized by SR proteins are sequence-specific. A silent mutation within an ESE can cause exon skipping, producing an aberrant protein (e.g., CFTR silent variants that impair splicing).<br><br>
+    <strong>2. Translational kinetics:</strong> Rare codons slow ribosomal elongation, enabling correct co-translational protein folding. Replacing rare codons with synonymous common ones can cause misfolding even with identical amino acid sequence.<br><br>
+    <strong>3. mRNA structure:</strong> Secondary structures in 5'/3' UTRs influence mRNA stability and translation efficiency. Silent mutations in coding regions can alter local mRNA structure.`,
+    'no change': `No mutation — no biological impact to report.`
+  };
+  document.getElementById('bio-impact').innerHTML = bioMap[mutType] || '';
+
+  // ── Visual flow ──
+  const flowSteps = [
+    { title:'Original DNA', content:`${allOrigCodons.map((c,i) => i===codonIndex ? `<span style="color:var(--accent-blue)">[${c}]</span>` : c).join(' ')}` },
+    { title:'Point Mutation', content:`<span style="color:var(--accent-orange)">${origBase} → ${mutBase}</span><br><small style="color:var(--text-tertiary);">pos ${mutPos+1}</small>` },
+    { title:'Mutated DNA', content:`${allMutCodons.map((c,i) => i===codonIndex ? `<span style="color:var(--accent-red)">[${c}]</span>` : c).join(' ')}` },
+    { title:'Protein Synthesis', content: mutType==='nonsense' ? `<span style="color:var(--accent-red)">⛔ Terminated</span>` : mutType==='missense' ? `<span style="color:var(--accent-orange)">⚠️ Altered AA</span>` : `<span style="color:var(--accent-green)">✓ Normal</span>` },
+    { title:'Effect', content: mutType==='nonsense' ? `<span style="color:var(--accent-red)">Truncated / Non-functional</span>` : mutType==='missense' ? `<span style="color:var(--accent-orange)">Altered Function</span>` : `<span style="color:var(--accent-green)">Normal Function</span>` }
+  ];
+
+  document.getElementById('flow-row').innerHTML = flowSteps.map((s, i) => `
+    ${i > 0 ? '<div class="flow-arrow">→</div>' : ''}
+    <div class="flow-card">
+      <div class="flow-title">${s.title}</div>
+      <div class="flow-content" style="font-size:0.85rem;">${s.content}</div>
+    </div>
+  `).join('');
+
+  // ── Disease examples ──
+  const diseases = DISEASE_DB[mutType] || DISEASE_DB.silent;
+  const colorMap = {
+    red: {border:'rgba(255,69,58,0.35)', top:'#FF453A', badge:'rgba(255,69,58,0.15)', badgeColor:'#FF453A'},
+    blue: {border:'rgba(10,132,255,0.3)', top:'#0A84FF', badge:'rgba(10,132,255,0.15)', badgeColor:'#0A84FF'},
+    orange: {border:'rgba(255,159,10,0.3)', top:'#FF9F0A', badge:'rgba(255,159,10,0.15)', badgeColor:'#FF9F0A'},
+    purple: {border:'rgba(191,90,242,0.3)', top:'#BF5AF2', badge:'rgba(191,90,242,0.15)', badgeColor:'#BF5AF2'},
+    teal: {border:'rgba(90,200,250,0.3)', top:'#5AC8FA', badge:'rgba(90,200,250,0.15)', badgeColor:'#5AC8FA'},
+    pink: {border:'rgba(255,55,95,0.3)', top:'#FF375F', badge:'rgba(255,55,95,0.15)', badgeColor:'#FF375F'},
+    green: {border:'rgba(50,215,75,0.3)', top:'#32D74B', badge:'rgba(50,215,75,0.15)', badgeColor:'#32D74B'}
+  };
+
+  document.getElementById('disease-grid').innerHTML = diseases.map(d => {
+    const c = colorMap[d.color] || colorMap.blue;
+    return `
+      <div class="disease-card" style="border-color:${c.border};">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${c.top};border-radius:var(--radius-md) var(--radius-md) 0 0;"></div>
+        <div class="disease-gene-tag">${d.gene}</div>
+        <div class="disease-name">${d.name}</div>
+        <div class="disease-codon">Codon Change</div>
+        <div class="codon-change">
+          <span class="codon-pill" style="background:rgba(10,132,255,0.15);color:#0A84FF;border:1px solid rgba(10,132,255,0.3);">${d.codonChange.split('→')[0].trim()}</span>
+          <span class="arrow-sm">→</span>
+          <span class="codon-pill" style="background:rgba(255,69,58,0.15);color:#FF453A;border:1px solid rgba(255,69,58,0.3);">${d.codonChange.split('→')[1]?.trim() || '?'}</span>
+          <span style="font-size:12px;color:var(--text-tertiary);font-weight:600;">${d.aaChange}</span>
+        </div>
+        <div class="disease-desc">${d.desc}</div>
+        <span class="mutation-badge" style="background:${c.badge};color:${c.badgeColor};border:1px solid ${c.border};margin-top:10px;font-size:10px;">${mutType.toUpperCase()}</span>
+      </div>
+    `;
+  }).join('');
+
+  // ── Cancer grid ──
+  document.getElementById('cancer-grid').innerHTML = CANCER_DB.map(c => `
+    <div class="cancer-card" style="border-color:${c.color}30;">
+      <div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;border-radius:50%;background:${c.color};opacity:0.06;"></div>
+      <div class="cancer-type">${c.type}</div>
+      <div class="cancer-gene">Gene: ${c.gene}</div>
+      <div class="cancer-desc">${c.desc}</div>
+      <span class="mut-tag" style="background:${c.color}20;color:${c.color};border:1px solid ${c.color}40;">${c.mut}</span>
+    </div>
+  `).join('');
+
+  // ── Codon table ──
+  buildCodonTable(origCodon, mutCodon);
+}
+
+function buildCodonTable(highlightOrig, highlightMut) {
+  const aaClassColors = {
+    nonpolar: '#0A84FF', polar: '#32D74B', basic: '#BF5AF2',
+    acidic: '#FF453A', stop: '#FF453A', nonpolar_start: '#32D74B',
+    polar_aromatic: '#5AC8FA', nonpolar_aromatic: '#FF9F0A', polar_sulfur: '#FF9F0A'
+  };
+  const aaClassLabels = {
+    nonpolar:'Nonpolar', polar:'Polar', basic:'Basic (+)', acidic:'Acidic (−)',
+    stop:'Stop Codon', nonpolar_start:'Start/Nonpolar', polar_aromatic:'Polar Aromatic',
+    nonpolar_aromatic:'Nonpolar Aromatic', polar_sulfur:'Sulfur-containing'
+  };
+
+  let html = `<thead><tr>
+    <th>Codon</th><th>RNA</th><th>Amino Acid</th><th>3-Letter</th><th>1-Letter</th><th>Class</th>
+  </tr></thead><tbody>`;
+
+  for (const [codon, info] of Object.entries(GENETIC_CODE)) {
+    const [aa, three, one, cls] = info;
+    const color = aaClassColors[cls] || '#aaa';
+    const isOrig = codon === highlightOrig;
+    const isMut = codon === highlightMut;
+    const rowStyle = isOrig ? 'background:rgba(10,132,255,0.12);' : isMut ? 'background:rgba(255,69,58,0.12);' : '';
+    const isStop = cls === 'stop';
+    const isStart = cls === 'nonpolar_start';
+    html += `<tr style="${rowStyle}">
+      <td><span class="codon-code ${isStop?'stop-codon':isStart?'start-codon':''}">${codon}${isOrig?' 🔵':isMut?' 🔴':''}</span></td>
+      <td style="color:var(--text-tertiary);">${codon.replace(/T/g,'U')}</td>
+      <td style="color:var(--text-primary);font-weight:600;">${aa}</td>
+      <td style="color:var(--text-secondary);">${three}</td>
+      <td><span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:2px 8px;border-radius:5px;font-weight:700;">${one}</span></td>
+      <td><span style="font-size:11px;color:${color};font-weight:600;">${aaClassLabels[cls]||cls}</span></td>
+    </tr>`;
+  }
+
+  html += '</tbody>';
+  document.getElementById('codon-table').innerHTML = html;
+}
+
+// init table on load
+window.onload = () => {
+  updateCount('origSeq','origCount');
+  updateCount('mutSeq','mutCount');
+  buildCodonTable('','');
+};
+
+function getOrdinal(n) {
+  const s = ['th','st','nd','rd'], v = n%100;
+  return n + (s[(v-20)%10]||s[v]||s[0]);
+}
+</script>
+</body>
+</html>
